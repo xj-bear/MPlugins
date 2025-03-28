@@ -39,7 +39,7 @@ class JackettPlugin(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico"
     # 插件版本
-    plugin_version = "1.02"
+    plugin_version = "1.03"
     # 插件作者
     plugin_author = "jason"
     # 作者主页
@@ -216,8 +216,9 @@ class JackettPlugin(_PluginBase):
         测试连接
         """
         try:
-            indexers = await self.get_indexers()
-            if indexers:
+            url = f"{self._host}/api/v2.0/indexers"
+            result = await self._request(url)
+            if isinstance(result, list):
                 return True, "连接成功"
             return False, "未获取到搜索源"
         except Exception as e:
@@ -277,6 +278,22 @@ class JackettPlugin(_PluginBase):
                 }
             }
         ]
+
+    def get_page(self) -> List[Dict[str, Any]]:
+        """
+        获取页面配置，返回插件详情页面配置
+        """
+        return []
+
+    async def stop_service(self):
+        """
+        停止插件服务
+        """
+        if self._session:
+            await self._session.close()
+            self._session = None
+        self._enabled = False
+        logger.info("Jackett插件服务已停止")
 
     @staticmethod
     def get_command() -> List[Dict]:
