@@ -4,12 +4,16 @@
   "title": "Jackett搜索",
   "author": "jason",
   "description": "通过Jackett API扩展资源搜索能力，支持多个资源站点搜索。",
-  "version": "1.08",
+  "version": "1.09",
   "requirements": [],
   "state": true,
   "pluginPath": "plugins.v2/jackett",
   "moduleName": "JackettPlugin",
   "loadOrder": 21,
+  "repository": {
+    "url": "https://github.com/xj-bear/MPlugins",
+    "branch": "main"
+  },
   "githubUrl": "https://github.com/xj-bear/MPlugins",
   "helpUrl": "",
   "icon": "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico",
