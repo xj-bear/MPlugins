@@ -37,9 +37,9 @@ class JackettPlugin(_PluginBase):
     # 插件描述
     plugin_desc = "通过Jackett API扩展资源搜索能力，支持多个资源站点搜索。"
     # 插件图标
-    plugin_icon = "search.png"
+    plugin_icon = "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico"
     # 插件版本
-    plugin_version = "2.0"
+    plugin_version = "1.01"
     # 插件作者
     plugin_author = "jason"
     # 作者主页
@@ -52,28 +52,22 @@ class JackettPlugin(_PluginBase):
     user_level = 2
 
     # 私有属性
-    _host: str = None
-    _api_key: str = None
-    _indexers: List[str] = []
-    _proxy: str = None
-    _verify_ssl: bool = False
-    _timeout: int = 30
-    _enabled: bool = False
-    _session: Optional[aiohttp.ClientSession] = None
+    _host = None
+    _api_key = None
+    _indexers = []
+    _proxy = None
+    _session = None
+    _enabled = False
 
     def init_plugin(self, config: Dict[str, Any] = None) -> None:
         """
         插件初始化
         """
         if config:
-            # 初始化配置
-            jackett_config = JackettConfig(**config)
-            self._host = jackett_config.host.rstrip('/')
-            self._api_key = jackett_config.api_key
-            self._indexers = jackett_config.indexers
-            self._proxy = jackett_config.proxy
-            self._verify_ssl = jackett_config.verify_ssl
-            self._timeout = jackett_config.timeout
+            self._host = config.get("host", "").rstrip('/')
+            self._api_key = config.get('api_key')
+            self._indexers = config.get('indexers', [])
+            self._proxy = config.get('proxy')
             self._enabled = True
             # 注册事件
             eventmanager.register_event(eventmanager.EventType.SearchTorrent, self.search)
@@ -93,10 +87,7 @@ class JackettPlugin(_PluginBase):
         发送请求
         """
         if not self._session:
-            self._session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=self._timeout),
-                trust_env=True
-            )
+            self._session = aiohttp.ClientSession()
 
         try:
             # 构建请求参数
@@ -112,7 +103,7 @@ class JackettPlugin(_PluginBase):
                 url,
                 params=params,
                 proxy=proxy,
-                ssl=self._verify_ssl
+                ssl=False
             ) as response:
                 if response.status == 200:
                     return await response.json()
@@ -162,7 +153,7 @@ class JackettPlugin(_PluginBase):
                 params["Tracker[]"] = self._indexers
 
             # 发送搜索请求
-            url = urljoin(self._host, "/api/v2.0/indexers/all/results")
+            url = f"{self._host}/api/v2.0/indexers/all/results"
             result = await self._request(url, params)
 
             if not result or "Results" not in result:
