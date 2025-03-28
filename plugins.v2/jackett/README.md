@@ -1,49 +1,40 @@
-# Jackett 插件
+# Jackett 搜索器插件
 
-这是一个用于 MoviePilot 的 Jackett 搜索插件，支持通过 Jackett 搜索资源。
+本插件用于连接 Jackett 搜索器，可以通过 Jackett API 搜索各种资源站点的影视资源。
+作者：jason
+仓库地址：https://github.com/xj-bear/MPlugins
 
 ## 功能特性
 
-- 支持配置 Jackett 服务器地址和 API Key
-- 支持选择性启用特定的索引器
-- 支持资源搜索并返回结果
-- 支持获取索引器列表
+- 支持 Jackett API 搜索
+- 支持指定索引器筛选
+- 支持按影视类型搜索
+- 支持 IMDB ID 精确匹配
+- 自动解析种子信息，包括大小、做种数等
 
-## 配置说明
+## 使用说明
 
-1. 启用插件：开启或关闭插件功能
-2. Jackett地址：填写 Jackett 服务器的访问地址，例如：http://localhost:9117
-3. API Key：填写 Jackett 的 API Key
-4. 索引器：选择要启用的索引器（可多选）
+### 安装 Jackett
 
-## 使用方法
+首先需要安装 Jackett，请参考官方文档：https://github.com/Jackett/Jackett
 
-1. 在插件配置页面填写相关配置信息
-2. 启用插件后，系统会自动调用 Jackett 进行资源搜索
-3. 可以通过 API 接口获取已配置的索引器列表
+### 配置插件
 
-## API 接口
-
-### 获取索引器列表
-
-- 接口地址：`/api/v1/jackett/indexers`
-- 请求方式：GET
-- 返回格式：
-  ```json
-  {
-    "code": 0,
-    "data": [
-      {
-        "id": "索引器ID",
-        "name": "索引器名称",
-        ...
-      }
-    ]
-  }
-  ```
+1. 在 Jackett 管理页面（一般为 http://your-ip:9117）获取 API Key
+2. 在 MoviePilot 插件配置页面填写以下信息：
+   - Jackett 地址：Jackett 的访问地址，例如 `http://127.0.0.1:9117`
+   - API Key：从 Jackett 页面获取的 API Key
+   - 使用索引器：可选，指定要使用的索引器ID，多个用英文逗号分隔，留空则使用全部
+   - 请求超时（秒）：API 请求超时时间，默认 60 秒
 
 ## 注意事项
 
-1. 请确保 Jackett 服务器可以正常访问
-2. API Key 请妥善保管，不要泄露
-3. 建议选择合适的索引器以提高搜索效率 
+1. 需确保 MoviePilot 能够访问到 Jackett 服务
+2. 搜索结果质量取决于 Jackett 中配置的站点
+3. 如使用 Docker 部署，注意容器间的网络连通性
+
+## 更新历史
+
+### v1.0
+- 初始版本
+- 支持基本的 Jackett API 搜索功能 
