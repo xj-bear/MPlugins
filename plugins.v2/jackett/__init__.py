@@ -39,7 +39,7 @@ class JackettPlugin(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico"
     # 插件版本
-    plugin_version = "1.03"
+    plugin_version = "1.04"
     # 插件作者
     plugin_author = "jason"
     # 作者主页
@@ -70,10 +70,15 @@ class JackettPlugin(_PluginBase):
                 self._api_key = config.get('api_key')
                 self._indexers = config.get('indexers', [])
                 self._proxy = config.get('proxy')
-                self._enabled = True
-                # 注册事件
-                eventmanager.register_event(eventmanager.EventType.SearchTorrent, self.search)
-                logger.info(f"Jackett插件初始化完成：host={self._host}, indexers={self._indexers}")
+                
+                if self._host and self._api_key:
+                    self._enabled = True
+                    # 注册事件
+                    eventmanager.register_event(eventmanager.EventType.SearchTorrent, self.search)
+                    logger.info(f"Jackett插件初始化完成：host={self._host}, indexers={self._indexers}")
+                else:
+                    logger.error("Jackett插件初始化失败：服务器地址或API密钥未配置")
+                    self._enabled = False
             except Exception as e:
                 logger.error(f"Jackett插件初始化出错：{str(e)}")
                 self._enabled = False
@@ -246,11 +251,14 @@ class JackettPlugin(_PluginBase):
                 }
             },
             {
-                'component': 'VTextField',
+                'component': 'VCombobox',
                 'props': {
                     'model': 'indexers',
                     'label': '搜索源',
-                    'placeholder': '留空则搜索全部'
+                    'placeholder': '留空则搜索全部',
+                    'multiple': True,
+                    'chips': True,
+                    'clearable': True
                 }
             },
             {
@@ -259,22 +267,6 @@ class JackettPlugin(_PluginBase):
                     'model': 'proxy',
                     'label': '代理服务器',
                     'placeholder': 'http://localhost:7890'
-                }
-            },
-            {
-                'component': 'VSwitch',
-                'props': {
-                    'model': 'verify_ssl',
-                    'label': '验证SSL证书'
-                }
-            },
-            {
-                'component': 'VTextField',
-                'props': {
-                    'model': 'timeout',
-                    'label': '超时时间(秒)',
-                    'type': 'number',
-                    'placeholder': '30'
                 }
             }
         ]
