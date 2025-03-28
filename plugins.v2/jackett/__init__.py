@@ -39,11 +39,11 @@ class JackettPlugin(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico"
     # 插件版本
-    plugin_version = "1.05"
+    plugin_version = "1.07"
     # 插件作者
     plugin_author = "jason"
     # 作者主页
-    author_url = "https://github.com/username"
+    author_url = "https://github.com/xj-bear"
     # 插件配置项ID前缀
     plugin_config_prefix = "jackett_"
     # 加载顺序

@@ -2,11 +2,13 @@
   "JackettPlugin": {
     "name": "Jackett搜索",
     "description": "通过Jackett API扩展资源搜索能力，支持多个资源站点搜索。",
-    "version": "1.05",
+    "version": "1.07",
     "icon": "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico",
     "author": "jason",
     "level": 2,
     "module": "plugins.v2.jackett",
+    "pluginPath": "plugins.v2/jackett",
+    "state": true,
     "config": {
       "host": {
         "name": "服务器地址",
