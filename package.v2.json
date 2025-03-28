@@ -2,7 +2,7 @@
   "Jackett": {
     "name": "Jackett搜索",
     "description": "通过Jackett API扩展资源搜索能力，支持多个资源站点搜索。",
-    "version": "1.01",
+    "version": "1.02",
     "icon": "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico",
     "author": "jason",
     "level": 2,

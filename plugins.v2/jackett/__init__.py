@@ -39,7 +39,7 @@ class JackettPlugin(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico"
     # 插件版本
-    plugin_version = "1.01"
+    plugin_version = "1.02"
     # 插件作者
     plugin_author = "jason"
     # 作者主页
@@ -63,23 +63,29 @@ class JackettPlugin(_PluginBase):
         """
         插件初始化
         """
+        logger.info(f"Jackett插件开始初始化，配置信息：{config}")
         if config:
-            self._host = config.get("host", "").rstrip('/')
-            self._api_key = config.get('api_key')
-            self._indexers = config.get('indexers', [])
-            self._proxy = config.get('proxy')
-            self._enabled = True
-            # 注册事件
-            eventmanager.register_event(eventmanager.EventType.SearchTorrent, self.search)
-            logger.info(f"Jackett插件初始化完成")
+            try:
+                self._host = config.get("host", "").rstrip('/')
+                self._api_key = config.get('api_key')
+                self._indexers = config.get('indexers', [])
+                self._proxy = config.get('proxy')
+                self._enabled = True
+                # 注册事件
+                eventmanager.register_event(eventmanager.EventType.SearchTorrent, self.search)
+                logger.info(f"Jackett插件初始化完成：host={self._host}, indexers={self._indexers}")
+            except Exception as e:
+                logger.error(f"Jackett插件初始化出错：{str(e)}")
+                self._enabled = False
         else:
-            self._enabled = False
             logger.error(f"Jackett插件初始化失败：配置为空")
+            self._enabled = False
 
     def get_state(self) -> bool:
         """
         获取插件状态
         """
+        logger.info(f"Jackett插件状态：{self._enabled}")
         return self._enabled
 
     async def _request(self, url: str, params: Dict = None) -> Dict:
@@ -88,12 +94,14 @@ class JackettPlugin(_PluginBase):
         """
         if not self._session:
             self._session = aiohttp.ClientSession()
+            logger.info("Jackett创建新的HTTP会话")
 
         try:
             # 构建请求参数
             if not params:
                 params = {}
             params["apikey"] = self._api_key
+            logger.info(f"Jackett发送请求：url={url}, params={params}")
 
             # 设置代理
             proxy = self._proxy if self._proxy else None
@@ -106,12 +114,14 @@ class JackettPlugin(_PluginBase):
                 ssl=False
             ) as response:
                 if response.status == 200:
-                    return await response.json()
+                    result = await response.json()
+                    logger.info(f"Jackett请求成功：{result}")
+                    return result
                 else:
-                    logger.error(f"请求失败: {response.status} - {await response.text()}")
+                    logger.error(f"Jackett请求失败: {response.status} - {await response.text()}")
                     return {}
         except Exception as e:
-            logger.error(f"请求异常: {str(e)}")
+            logger.error(f"Jackett请求异常: {str(e)}")
             return {}
 
     async def get_indexers(self) -> List[Dict]:
@@ -132,9 +142,11 @@ class JackettPlugin(_PluginBase):
         :return: 搜索结果列表
         """
         if not self._enabled:
+            logger.warning("Jackett插件未启用，无法搜索")
             return []
 
         try:
+            logger.info(f"Jackett开始搜索：keyword={keyword}, mtype={mtype}")
             # 根据媒体类型设置搜索分类
             category = "5000,5070"  # 默认搜索电影和剧集
             if mtype == MediaType.Movie:
@@ -157,6 +169,7 @@ class JackettPlugin(_PluginBase):
             result = await self._request(url, params)
 
             if not result or "Results" not in result:
+                logger.warning("Jackett搜索结果为空")
                 return []
 
             # 处理搜索结果
@@ -191,7 +204,7 @@ class JackettPlugin(_PluginBase):
                     logger.error(f"处理搜索结果异常: {str(e)}")
                     continue
 
-            logger.info(f"Jackett搜索 {keyword} 返回 {len(search_results)} 条结果")
+            logger.info(f"Jackett搜索完成，返回 {len(search_results)} 条结果")
             return search_results
 
         except Exception as e:
