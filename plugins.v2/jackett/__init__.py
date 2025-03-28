@@ -39,7 +39,7 @@ class JackettPlugin(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico"
     # 插件版本
-    plugin_version = "1.07"
+    plugin_version = "1.08"
     # 插件作者
     plugin_author = "jason"
     # 作者主页
@@ -56,41 +56,63 @@ class JackettPlugin(_PluginBase):
     _api_key = None
     _indexers = []
     _proxy = None
+    _verify_ssl = False
+    _timeout = 30
     _session = None
     _enabled = False
+    _initialized = False
 
-    def init_plugin(self, config: Dict[str, Any] = None) -> None:
+    async def init_plugin(self, config: Dict[str, Any] = None) -> None:
         """
         插件初始化
         """
-        logger.info(f"Jackett插件开始初始化，配置信息：{config}")
-        if config:
-            try:
-                self._host = config.get("host", "").rstrip('/')
-                self._api_key = config.get('api_key')
-                self._indexers = config.get('indexers', [])
-                self._proxy = config.get('proxy')
-                
-                if self._host and self._api_key:
-                    self._enabled = True
-                    # 注册事件
-                    eventmanager.register_event(eventmanager.EventType.SearchTorrent, self.search)
-                    logger.info(f"Jackett插件初始化完成：host={self._host}, indexers={self._indexers}")
-                else:
-                    logger.error("Jackett插件初始化失败：服务器地址或API密钥未配置")
-                    self._enabled = False
-            except Exception as e:
-                logger.error(f"Jackett插件初始化出错：{str(e)}")
-                self._enabled = False
-        else:
-            logger.error(f"Jackett插件初始化失败：配置为空")
+        if self._initialized:
+            return
+        
+        try:
+            if not config:
+                logger.error("Jackett插件初始化失败：配置为空")
+                return
+
+            self._host = config.get("host", "").rstrip('/')
+            self._api_key = config.get('api_key')
+            self._indexers = config.get('indexers', [])
+            self._proxy = config.get('proxy')
+            self._verify_ssl = config.get('verify_ssl', False)
+            self._timeout = config.get('timeout', 30)
+
+            if not self._host or not self._api_key:
+                logger.error("Jackett插件初始化失败：服务器地址或API密钥未配置")
+                return
+
+            # 创建新的会话
+            if not self._session:
+                timeout = aiohttp.ClientTimeout(total=self._timeout)
+                self._session = aiohttp.ClientSession(timeout=timeout)
+                logger.info("Jackett创建新的HTTP会话")
+
+            # 测试连接
+            success, message = await self.test_connection()
+            if not success:
+                logger.error(f"Jackett连接测试失败：{message}")
+                return
+
+            # 注册事件
+            eventmanager.register_event(eventmanager.EventType.SearchTorrent, self.search)
+            
+            self._enabled = True
+            self._initialized = True
+            logger.info(f"Jackett插件初始化完成：host={self._host}, indexers={self._indexers}")
+
+        except Exception as e:
+            logger.error(f"Jackett插件初始化出错：{str(e)}")
             self._enabled = False
+            self._initialized = False
 
     def get_state(self) -> bool:
         """
         获取插件状态
         """
-        logger.info(f"Jackett插件状态：{self._enabled}")
         return self._enabled
 
     async def _request(self, url: str, params: Dict = None) -> Dict:
@@ -98,7 +120,8 @@ class JackettPlugin(_PluginBase):
         发送请求
         """
         if not self._session:
-            self._session = aiohttp.ClientSession()
+            timeout = aiohttp.ClientTimeout(total=self._timeout)
+            self._session = aiohttp.ClientSession(timeout=timeout)
             logger.info("Jackett创建新的HTTP会话")
 
         try:
@@ -106,25 +129,29 @@ class JackettPlugin(_PluginBase):
             if not params:
                 params = {}
             params["apikey"] = self._api_key
-            logger.info(f"Jackett发送请求：url={url}, params={params}")
-
-            # 设置代理
-            proxy = self._proxy if self._proxy else None
 
             # 发送请求
             async with self._session.get(
                 url,
                 params=params,
-                proxy=proxy,
-                ssl=False
+                proxy=self._proxy,
+                ssl=self._verify_ssl,
+                timeout=self._timeout
             ) as response:
                 if response.status == 200:
                     result = await response.json()
-                    logger.info(f"Jackett请求成功：{result}")
                     return result
                 else:
-                    logger.error(f"Jackett请求失败: {response.status} - {await response.text()}")
+                    error_text = await response.text()
+                    logger.error(f"Jackett请求失败: HTTP {response.status} - {error_text}")
                     return {}
+
+        except aiohttp.ClientTimeout:
+            logger.error(f"Jackett请求超时: {url}")
+            return {}
+        except aiohttp.ClientError as e:
+            logger.error(f"Jackett网络错误: {str(e)}")
+            return {}
         except Exception as e:
             logger.error(f"Jackett请求异常: {str(e)}")
             return {}
@@ -133,6 +160,9 @@ class JackettPlugin(_PluginBase):
         """
         获取所有搜索源
         """
+        if not self._enabled:
+            return []
+            
         url = urljoin(self._host, "/api/v2.0/indexers")
         result = await self._request(url)
         if isinstance(result, list):
@@ -142,22 +172,23 @@ class JackettPlugin(_PluginBase):
     async def search(self, keyword: str, mtype: MediaType = None) -> List[Dict]:
         """
         搜索资源
-        :param keyword: 搜索关键词
-        :param mtype: 媒体类型
-        :return: 搜索结果列表
         """
         if not self._enabled:
-            logger.warning("Jackett插件未启用，无法搜索")
+            return []
+
+        if not keyword:
+            logger.warning("搜索关键词为空")
             return []
 
         try:
-            logger.info(f"Jackett开始搜索：keyword={keyword}, mtype={mtype}")
             # 根据媒体类型设置搜索分类
-            category = "5000,5070"  # 默认搜索电影和剧集
+            category = None
             if mtype == MediaType.Movie:
-                category = "2000"  # 只搜索电影
+                category = "2000"  # 电影
             elif mtype == MediaType.TV:
-                category = "5000"  # 只搜索剧集
+                category = "5000"  # 剧集
+            else:
+                category = "2000,5000"  # 电影和剧集
 
             # 构建搜索参数
             params = {
@@ -170,11 +201,10 @@ class JackettPlugin(_PluginBase):
                 params["Tracker[]"] = self._indexers
 
             # 发送搜索请求
-            url = f"{self._host}/api/v2.0/indexers/all/results"
+            url = urljoin(self._host, "/api/v2.0/indexers/all/results")
             result = await self._request(url, params)
 
             if not result or "Results" not in result:
-                logger.warning("Jackett搜索结果为空")
                 return []
 
             # 处理搜索结果
@@ -182,12 +212,12 @@ class JackettPlugin(_PluginBase):
             for item in result.get("Results", []):
                 try:
                     # 计算做种和下载人数
-                    peers = item.get("Peers", 0)
-                    seeders = item.get("Seeders", 0)
+                    peers = int(item.get("Peers", 0))
+                    seeders = int(item.get("Seeders", 0))
                     leechers = peers - seeders if peers > seeders else 0
 
                     # 转换大小为字节
-                    size = item.get("Size", 0)
+                    size = int(item.get("Size", 0))
 
                     # 添加结果
                     search_results.append({
@@ -198,8 +228,8 @@ class JackettPlugin(_PluginBase):
                         "seeders": seeders,
                         "peers": peers,
                         "leechers": leechers,
-                        "downloadvolumefactor": item.get("DownloadVolumeFactor", 1),
-                        "uploadvolumefactor": item.get("UploadVolumeFactor", 1),
+                        "downloadvolumefactor": float(item.get("DownloadVolumeFactor", 1)),
+                        "uploadvolumefactor": float(item.get("UploadVolumeFactor", 1)),
                         "page_url": item.get("Guid", ""),
                         "indexer": item.get("Tracker", ""),
                         "date": item.get("PublishDate", ""),
@@ -220,8 +250,11 @@ class JackettPlugin(_PluginBase):
         """
         测试连接
         """
+        if not self._host or not self._api_key:
+            return False, "服务器地址或API密钥未配置"
+
         try:
-            url = f"{self._host}/api/v2.0/indexers"
+            url = urljoin(self._host, "/api/v2.0/indexers")
             result = await self._request(url)
             if isinstance(result, list):
                 return True, "连接成功"
@@ -232,7 +265,6 @@ class JackettPlugin(_PluginBase):
     def get_form(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         获取配置表单
-        返回: Tuple[表单配置, 默认值]
         """
         return {
             "schema": [
@@ -249,18 +281,7 @@ class JackettPlugin(_PluginBase):
                     'props': {
                         'model': 'api_key',
                         'label': 'API密钥',
-                        'placeholder': '在Jackett管理界面查看'
-                    }
-                },
-                {
-                    'component': 'VCombobox',
-                    'props': {
-                        'model': 'indexers',
-                        'label': '搜索源',
-                        'placeholder': '留空则搜索全部',
-                        'multiple': True,
-                        'chips': True,
-                        'clearable': True
+                        'placeholder': '在Jackett管理页面获取'
                     }
                 },
                 {
@@ -268,50 +289,68 @@ class JackettPlugin(_PluginBase):
                     'props': {
                         'model': 'proxy',
                         'label': '代理服务器',
-                        'placeholder': 'http://localhost:7890'
+                        'placeholder': '可选，示例：http://localhost:7890'
+                    }
+                },
+                {
+                    'component': 'VSwitch',
+                    'props': {
+                        'model': 'verify_ssl',
+                        'label': '验证SSL证书'
+                    }
+                },
+                {
+                    'component': 'VSlider',
+                    'props': {
+                        'model': 'timeout',
+                        'label': '超时时间(秒)',
+                        'min': 10,
+                        'max': 60,
+                        'step': 5
                     }
                 }
             ]
         }, {
-            "host": "http://localhost:9117",
-            "api_key": "",
-            "indexers": [],
-            "proxy": ""
+            'host': 'http://localhost:9117',
+            'api_key': '',
+            'indexers': [],
+            'proxy': '',
+            'verify_ssl': False,
+            'timeout': 30
         }
-
-    def get_page(self) -> List[Dict[str, Any]]:
-        """
-        获取页面配置，返回插件详情页面配置
-        """
-        return []
 
     async def stop_service(self):
         """
         停止插件服务
         """
-        if self._session:
-            await self._session.close()
-            self._session = None
-        self._enabled = False
-        logger.info("Jackett插件服务已停止")
+        try:
+            if self._session:
+                await self._session.close()
+                self._session = None
+                logger.info("Jackett关闭HTTP会话")
+        except Exception as e:
+            logger.error(f"关闭Jackett会话异常：{str(e)}")
+        finally:
+            self._enabled = False
+            self._initialized = False
 
     @staticmethod
     def get_command() -> List[Dict]:
         """
-        注册命令
+        获取命令
         """
         return []
 
     def get_api(self) -> List[Dict]:
         """
-        注册API
+        获取API
         """
         return [
             {
-                "path": "/test",
+                "path": "/jackett/test",
                 "endpoint": self.test_connection,
                 "methods": ["GET"],
-                "summary": "测试连接",
-                "description": "测试Jackett服务器连接"
+                "summary": "测试Jackett连接",
+                "description": "测试Jackett服务器连接是否正常"
             }
         ] 
