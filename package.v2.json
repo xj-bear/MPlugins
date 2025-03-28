@@ -1,4 +1,5 @@
 {
+  "key": "JackettPlugin",
   "name": "JackettPlugin",
   "title": "Jackett搜索",
   "author": "jason",
@@ -9,7 +10,7 @@
   "pluginPath": "plugins.v2/jackett",
   "moduleName": "JackettPlugin",
   "loadOrder": 21,
-  "githubUrl": "",
+  "githubUrl": "https://github.com/xj-bear/MPlugins",
   "helpUrl": "",
   "icon": "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico",
   "color": "#2196F3",
