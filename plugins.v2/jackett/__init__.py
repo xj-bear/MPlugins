@@ -39,7 +39,7 @@ class JackettPlugin(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/Jackett/Jackett/master/src/Jackett.Common/Content/favicon.ico"
     # 插件版本
-    plugin_version = "1.04"
+    plugin_version = "1.05"
     # 插件作者
     plugin_author = "jason"
     # 作者主页
@@ -229,47 +229,49 @@ class JackettPlugin(_PluginBase):
         except Exception as e:
             return False, f"连接失败：{str(e)}"
 
-    def get_form(self) -> List[Dict[str, Any]]:
+    def get_form(self) -> Dict[str, Any]:
         """
         获取配置表单
         """
-        return [
-            {
-                'component': 'VTextField',
-                'props': {
-                    'model': 'host',
-                    'label': '服务器地址',
-                    'placeholder': 'http://localhost:9117'
+        return {
+            "schema": [
+                {
+                    'component': 'VTextField',
+                    'props': {
+                        'model': 'host',
+                        'label': '服务器地址',
+                        'placeholder': 'http://localhost:9117'
+                    }
+                },
+                {
+                    'component': 'VTextField',
+                    'props': {
+                        'model': 'api_key',
+                        'label': 'API密钥',
+                        'placeholder': '在Jackett管理界面查看'
+                    }
+                },
+                {
+                    'component': 'VCombobox',
+                    'props': {
+                        'model': 'indexers',
+                        'label': '搜索源',
+                        'placeholder': '留空则搜索全部',
+                        'multiple': True,
+                        'chips': True,
+                        'clearable': True
+                    }
+                },
+                {
+                    'component': 'VTextField',
+                    'props': {
+                        'model': 'proxy',
+                        'label': '代理服务器',
+                        'placeholder': 'http://localhost:7890'
+                    }
                 }
-            },
-            {
-                'component': 'VTextField',
-                'props': {
-                    'model': 'api_key',
-                    'label': 'API密钥',
-                    'placeholder': '在Jackett管理界面查看'
-                }
-            },
-            {
-                'component': 'VCombobox',
-                'props': {
-                    'model': 'indexers',
-                    'label': '搜索源',
-                    'placeholder': '留空则搜索全部',
-                    'multiple': True,
-                    'chips': True,
-                    'clearable': True
-                }
-            },
-            {
-                'component': 'VTextField',
-                'props': {
-                    'model': 'proxy',
-                    'label': '代理服务器',
-                    'placeholder': 'http://localhost:7890'
-                }
-            }
-        ]
+            ]
+        }
 
     def get_page(self) -> List[Dict[str, Any]]:
         """
