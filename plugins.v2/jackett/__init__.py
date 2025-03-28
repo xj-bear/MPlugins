@@ -229,9 +229,10 @@ class JackettPlugin(_PluginBase):
         except Exception as e:
             return False, f"连接失败：{str(e)}"
 
-    def get_form(self) -> Dict[str, Any]:
+    def get_form(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         获取配置表单
+        返回: Tuple[表单配置, 默认值]
         """
         return {
             "schema": [
@@ -271,6 +272,11 @@ class JackettPlugin(_PluginBase):
                     }
                 }
             ]
+        }, {
+            "host": "http://localhost:9117",
+            "api_key": "",
+            "indexers": [],
+            "proxy": ""
         }
 
     def get_page(self) -> List[Dict[str, Any]]:
