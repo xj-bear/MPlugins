@@ -1,0 +1,37 @@
+{
+  "Jackett": {
+    "name": "Jackett搜索",
+    "description": "通过Jackett API扩展资源搜索能力，支持多个资源站点搜索。",
+    "version": "1.0",
+    "icon": "search.png",
+    "author": "jason",
+    "level": 2,
+    "module": "plugins.v2.jackett",
+    "config": {
+      "host": {
+        "name": "服务器地址",
+        "type": "string",
+        "default": "http://localhost:9117",
+        "description": "Jackett服务器地址，格式：http://localhost:9117"
+      },
+      "api_key": {
+        "name": "API密钥",
+        "type": "string",
+        "default": "",
+        "description": "Jackett API密钥，在Jackett管理界面查看"
+      },
+      "indexers": {
+        "name": "搜索源",
+        "type": "list",
+        "default": [],
+        "description": "指定搜索源列表，留空则搜索全部"
+      },
+      "proxy": {
+        "name": "代理服务器",
+        "type": "string",
+        "default": "",
+        "description": "代理服务器地址，格式：http://localhost:7890"
+      }
+    }
+  }
+} 
